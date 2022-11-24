@@ -15,13 +15,10 @@ console.log(texts.value)
 const speech = useSpeechSynthesis(text, {voice})
 
 onMounted(() => {
-  if (speech.isSupported.value && speechRecognition.isSupported.value) {
-    // load at last
-    setTimeout(() => {
-      const synth = window.speechSynthesis
-      voices.value = synth.getVoices()
-      voice.value = voices.value[0]
-    })
+  const synth = window.speechSynthesis
+  synth.onvoiceschanged = (e) => {
+    voices.value = synth.getVoices()
+    voice.value = voices.value[0]
   }
 })
 
@@ -70,5 +67,5 @@ function stopSpeech() {
 
 <route lang="yaml">
 meta:
-  layout: home
+layout: home
 </route>
