@@ -2,57 +2,69 @@
 const user = useUserStore()
 const name = $ref(user.savedName)
 
-const router = useRouter()
-const go = () => {
-  if (name)
-    router.push(`/hi/${encodeURIComponent(name)}`)
+const voices = ref<SpeechSynthesisVoice[]>([])
+const voice = ref<SpeechSynthesisVoice | undefined>(undefined)
+const texts = ref<string[]>([''])
+const text = computed(() => texts.value[texts.value.length - 1])
+
+const speechRecognition = useSpeechRecognition({
+  lang: 'fr-FR',
+  continuous: true,
+})
+console.log(texts.value)
+const speech = useSpeechSynthesis(text, {voice})
+
+onMounted(() => {
+  if (speech.isSupported.value && speechRecognition.isSupported.value) {
+    // load at last
+    setTimeout(() => {
+      const synth = window.speechSynthesis
+      voices.value = synth.getVoices()
+      voice.value = voices.value[0]
+    })
+  }
+})
+
+function listenSpeech() {
+  speechRecognition.start()
 }
 
-const { t } = useI18n()
+const playSpeech = () => {
+  speech.speak()
+}
+
+function stopSpeech() {
+  if (speechRecognition.isListening.value) {
+    texts.value.push(speechRecognition.result.value)
+    speechRecognition.result.value = ''
+    speechRecognition.stop()
+    playSpeech()
+  }
+}
 </script>
 
 <template>
-  <div>
-    <div text-4xl>
-      <div i-carbon-campsite inline-block />
-    </div>
-    <p>
-      <a rel="noreferrer" href="https://github.com/antfu/vitesse" target="_blank">
-        Vitesse
-      </a>
-    </p>
-    <p>
-      <em text-sm opacity-75>{{ t('intro.desc') }}</em>
-    </p>
-
-    <div py-4 />
-
-    <input
-      id="input"
-      v-model="name"
-      :placeholder="t('intro.whats-your-name')"
-      :aria-label="t('intro.whats-your-name')"
-      type="text"
-      autocomplete="false"
-      p="x4 y2"
-      w="250px"
-      text="center"
-      bg="transparent"
-      border="~ rounded gray-200 dark:gray-700"
-      outline="none active:none"
-      @keydown.enter="go"
-    >
-    <label class="hidden" for="input">{{ t('intro.whats-your-name') }}</label>
-
-    <div>
-      <button
-        btn m-3 text-sm
-        :disabled="!name"
-        @click="go"
+  <div flex flex-col justify-center>
+    <select v-model="voice">
+      <option bg="$vp-c-bg" disabled>
+        Select Language
+      </option>
+      <option
+        v-for="(voice, i) in voices"
+        :key="i"
+        bg="$vp-c-bg"
+        :value="voice"
       >
-        {{ t('button.go') }}
-      </button>
-    </div>
+        {{ `${voice.name} (${voice.lang})` }}
+      </option>
+    </select>
+    <button v-if="!speechRecognition.isListening.value" @click="listenSpeech">
+      Listen
+    </button>
+    <button v-else @click="stopSpeech">
+      Stop
+    </button>
+    <textarea v-for="text in texts" :value="text"/>
   </div>
 </template>
 
